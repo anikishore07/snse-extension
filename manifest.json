@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "SNSE",
+  "version": "1.0.0",
+  "description": "Shopping Helper",
+  "permissions": [
+    "sidePanel",
+    "storage"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.abercrombie.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {},
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  }
+}
+
