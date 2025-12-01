@@ -36,8 +36,6 @@ const renderOutfit = (outfit) => {
       const img = document.createElement('img');
       img.src = inspirationImage;
       img.alt = 'Suggested outfit';
-      img.style.maxWidth = '100%';
-      img.style.borderRadius = '8px';
       outfitResultEl.appendChild(img);
     }
 
@@ -155,7 +153,12 @@ tabPickups?.addEventListener('click', () => setActiveTab('pickups'));
 
 const renderPickups = (items = []) => {
   pickupsListEl.innerHTML = '';
+  
+  // Add grid class to the list
+  pickupsListEl.className = 'pickups-grid';
+  
   if (!items.length) {
+    pickupsListEl.className = '';
     const li = document.createElement('li');
     li.textContent = 'No pickups saved yet.';
     pickupsListEl.appendChild(li);
@@ -164,38 +167,18 @@ const renderPickups = (items = []) => {
 
   items.forEach((item) => {
     const li = document.createElement('li');
-    const title = document.createElement('p');
-    title.textContent = item.title || 'Unknown item';
-    title.style.margin = '0 0 4px 0';
-    title.style.fontWeight = '600';
-
-    li.appendChild(title);
-
+    
     if (item.image) {
       console.log('SNSE: My Pickups image path:', item.image);
       const img = document.createElement('img');
       img.src = item.image;
       img.alt = item.title || 'Saved outfit';
-      img.style.maxWidth = '100%';
-      img.style.borderRadius = '8px';
       li.appendChild(img);
     }
 
-    if (item.category) {
-      const category = document.createElement('p');
-      category.textContent = `Category: ${item.category}`;
-      category.style.margin = '4px 0';
-      category.style.fontSize = '0.9rem';
-      li.appendChild(category);
-    }
-
-    if (Array.isArray(item.compatibleCategories) && item.compatibleCategories.length) {
-      const compatible = document.createElement('p');
-      compatible.textContent = `Pairs well with: ${item.compatibleCategories.join(', ')}`;
-      compatible.style.margin = '0 0 4px 0';
-      compatible.style.fontSize = '0.9rem';
-      li.appendChild(compatible);
-    }
+    const title = document.createElement('p');
+    title.textContent = item.title || 'Unknown item';
+    li.appendChild(title);
 
     pickupsListEl.appendChild(li);
   });
