@@ -25,8 +25,9 @@ if (closetMatchesSection) {
 }
 
 let currentTitle = null;
+let currentProductImageUrl = null;
 
-const renderOutfit = (outfit) => {
+const renderOutfit = (outfit, productImageUrl = null) => {
   outfitResultEl.innerHTML = '';
   if (outfit) {
     const inspirationImage = outfit.outfitImage || outfit.image || null;
@@ -43,9 +44,20 @@ const renderOutfit = (outfit) => {
     caption.textContent = 'Here is an outfit idea for this product.';
     outfitResultEl.appendChild(caption);
   } else {
-    const message = document.createElement('p');
-    message.textContent = 'No outfit ideas yet for this item.';
-    outfitResultEl.appendChild(message);
+    // Display product image if available, otherwise show message
+    if (productImageUrl) {
+      const img = document.createElement('img');
+      img.src = productImageUrl;
+      img.alt = 'Product image';
+      outfitResultEl.appendChild(img);
+      const caption = document.createElement('p');
+      caption.textContent = 'Product image from page.';
+      outfitResultEl.appendChild(caption);
+    } else {
+      const message = document.createElement('p');
+      message.textContent = 'No outfit ideas yet for this item.';
+      outfitResultEl.appendChild(message);
+    }
   }
 
   updateClosetMatches(outfit);
@@ -233,14 +245,15 @@ const savePickup = () => {
 
 addPickupBtn?.addEventListener('click', savePickup);
 
-const updateFromTitle = (title) => {
+const updateFromTitle = (title, productImageUrl = null) => {
   currentTitle = title || null;
+  currentProductImageUrl = productImageUrl || null;
   if (!title) {
-    renderOutfit(null);
+    renderOutfit(null, productImageUrl);
     return;
   }
   const outfit = outfitData[title];
-  renderOutfit(outfit);
+  renderOutfit(outfit, productImageUrl);
 };
 
 const hydrateFromStorage = () => {
@@ -248,13 +261,13 @@ const hydrateFromStorage = () => {
     console.warn('SNSE: chrome.storage.local unavailable in side panel.');
     return;
   }
-  chrome.storage.local.get(['snseLastProductTitle', 'snsePickups'], (result) => {
+  chrome.storage.local.get(['snseLastProductTitle', 'snseLastProductImageUrl', 'snsePickups'], (result) => {
     if (chrome.runtime.lastError) {
       console.warn('SNSE: Failed to read stored data', chrome.runtime.lastError);
       return;
     }
     if (result?.snseLastProductTitle) {
-      updateFromTitle(result.snseLastProductTitle);
+      updateFromTitle(result.snseLastProductTitle, result.snseLastProductImageUrl);
     }
     renderPickups(result?.snsePickups || []);
   });
@@ -263,7 +276,12 @@ const hydrateFromStorage = () => {
 chrome.storage?.onChanged?.addListener((changes, areaName) => {
   if (areaName === 'local') {
     if (changes.snseLastProductTitle) {
-      updateFromTitle(changes.snseLastProductTitle.newValue);
+      const imageUrl = changes.snseLastProductImageUrl?.newValue || null;
+      updateFromTitle(changes.snseLastProductTitle.newValue, imageUrl);
+    }
+    if (changes.snseLastProductImageUrl && currentTitle) {
+      // Update image if title is already set
+      updateFromTitle(currentTitle, changes.snseLastProductImageUrl.newValue);
     }
     if (changes.snsePickups) {
       const nextPickups = changes.snsePickups.newValue || [];
@@ -277,7 +295,7 @@ chrome.storage?.onChanged?.addListener((changes, areaName) => {
 
 chrome.runtime.onMessage.addListener((message) => {
   if (message?.type === 'snse-product-title' && message.title) {
-    updateFromTitle(message.title);
+    updateFromTitle(message.title, message.productImageUrl);
   }
 });
 
