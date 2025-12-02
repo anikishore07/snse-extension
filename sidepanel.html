@@ -25,11 +25,18 @@
       <p>Waiting for product info...</p>
     </div>
     <button id="add-pickup" type="button">Add to Pickups</button>
+    <button id="create-outfit-btn" type="button" class="btn-orange-gradient">Create Outfit</button>
   </div>
   <div id="pickups-view" class="tab-content hidden">
-    <ul id="pickups-list">
-      <li>No pickups saved yet.</li>
-    </ul>
+    <button id="exit-outfit-btn" class="exit-outfit-btn hidden" type="button" aria-label="Exit outfit creation">×</button>
+    <div id="pickups-container">
+      <ul id="pickups-list">
+        <li>No pickups saved yet.</li>
+      </ul>
+    </div>
+    <div class="pickups-footer">
+      <button id="generate-outfit-btn" type="button" class="btn-orange-gradient" disabled>Generate Outfit</button>
+    </div>
   </div>
 
   <!-- Profile Overlay -->

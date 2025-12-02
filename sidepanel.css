@@ -35,6 +35,107 @@ body {
   border-bottom: none;
 }
 
+.pickup-item {
+  cursor: pointer;
+  transition: transform 0.2s ease, border 0.2s ease;
+}
+
+/* Category Headers */
+.category-header {
+  font-weight: bold;
+  margin-top: 20px;
+  font-size: 1.1em;
+  text-transform: uppercase;
+  color: #333;
+}
+
+/* Orange Gradient Button */
+.btn-orange-gradient {
+  background: linear-gradient(to right, #ff8c00, #ff4500);
+  color: #ffffff;
+  border: none;
+  width: 100%;
+  padding: 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 1rem;
+  transition: opacity 0.2s ease;
+  margin-top: 12px;
+}
+
+.btn-orange-gradient:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+button:disabled {
+  background-color: #cccccc;
+  color: #666666;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Pickups Footer */
+.pickups-footer {
+  position: sticky;
+  bottom: 0;
+  background-color: #ffffff;
+  padding: 16px;
+  border-top: 1px solid #e0e0e0;
+  margin-top: 20px;
+}
+
+#pickups-container {
+  padding-bottom: 80px;
+}
+
+/* Exit Outfit Creation Button */
+.exit-outfit-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: #ff4500;
+  color: #ffffff;
+  border: none;
+  font-size: 24px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.exit-outfit-btn:hover {
+  background-color: #ff6347;
+  transform: scale(1.1);
+}
+
+.exit-outfit-btn.hidden {
+  display: none;
+}
+
+#pickups-view {
+  position: relative;
+}
+
+.pickup-item.selected {
+  border: 3px solid #ff4500;
+  border-radius: 8px;
+  transform: scale(0.95);
+}
+
+.pickup-item.dimmed {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
 .pickup-image-container {
   position: relative;
   width: 100%;
@@ -76,6 +177,40 @@ body {
   display: flex;
 }
 
+/* Selected pickup item */
+.pickup-item {
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.pickup-item.selected {
+  border: 3px solid #ff4500;
+  border-radius: 8px;
+  transform: scale(0.95);
+}
+
+.pickup-item.dimmed {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+/* Selected pickup item styling */
+.pickup-item {
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.pickup-item.selected {
+  border: 3px solid #ff4500;
+  border-radius: 8px;
+  transform: scale(0.95);
+}
+
+.pickup-item.dimmed {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
 /* Button */
 #add-pickup {
   background-color: #000;
@@ -105,10 +240,30 @@ body {
 }
 
 .main-header h1 {
-  color: #333;
+  color: #000;
   margin: 0;
   padding: 0;
   font-size: 1.5rem;
+  font-weight: 700;
+  transition: all 0.3s ease;
+}
+
+.main-header h1.galaxy-gradient {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #4facfe 75%, #667eea 100%);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: galaxy-shift 8s ease infinite;
+}
+
+@keyframes galaxy-shift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
 }
 
 .profile-icon-btn {

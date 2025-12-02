@@ -7,7 +7,12 @@ console.log('SNSE side panel loaded');
 
 const outfitResultEl = document.getElementById('outfit-result');
 const addPickupBtn = document.getElementById('add-pickup');
+const createOutfitBtn = document.getElementById('create-outfit-btn');
+const generateOutfitBtn = document.getElementById('generate-outfit-btn');
+const exitOutfitBtn = document.getElementById('exit-outfit-btn');
+const snseLogo = document.querySelector('.main-header h1');
 const pickupsListEl = document.getElementById('pickups-list');
+const pickupsContainer = document.getElementById('pickups-container');
 const inspirationView = document.getElementById('inspiration-view');
 const pickupsView = document.getElementById('pickups-view');
 const tabInspiration = document.getElementById('tab-inspiration');
@@ -27,6 +32,9 @@ if (closetMatchesSection) {
 let currentTitle = null;
 let currentProductImageUrl = null;
 let currentProductState = null;
+let selectedPickup = null;
+let outfitSelection = { top: null, bottom: null, shoes: null };
+let isOutfitCreationMode = false;
 
 const categorizeItem = (title) => {
   if (!title) {
@@ -48,7 +56,7 @@ const categorizeItem = (title) => {
   }
   
   // Shoes keywords
-  const shoesKeywords = ["shoe", "sneaker", "boot", "sandal", "slide", "loafer", "flats"];
+  const shoesKeywords = ["shoe", "sneaker", "boot", "sandal", "slide", "loafer", "loafers", "flats", "flat", "croc"];
   if (shoesKeywords.some(keyword => lowerTitle.includes(keyword))) {
     return "shoes";
   }
@@ -184,63 +192,214 @@ const setActiveTab = (tab) => {
   tabInspiration.classList.toggle('active', isInspiration);
   tabPickups.classList.toggle('active', !isInspiration);
 
-  if (isInspiration && currentProductState) {
-    updateClosetMatches(currentProductState);
+  if (isInspiration) {
+    // Reset outfit creation mode when switching to inspiration tab
+    exitOutfitCreation();
+    if (currentProductState) {
+      updateClosetMatches(currentProductState);
+    }
+  } else {
+    // Show exit button if in outfit creation mode when switching to pickups tab
+    if (exitOutfitBtn) {
+      exitOutfitBtn.classList.toggle('hidden', !isOutfitCreationMode);
+    }
   }
 };
 
 tabInspiration?.addEventListener('click', () => setActiveTab('inspiration'));
 tabPickups?.addEventListener('click', () => setActiveTab('pickups'));
 
-const renderPickups = (items = []) => {
-  pickupsListEl.innerHTML = '';
+const createPickupItem = (item) => {
+  const li = document.createElement('li');
+  li.className = 'pickup-item';
   
-  // Add grid class to the list
-  pickupsListEl.className = 'pickups-grid';
+  // Check if item should be dimmed (in outfit mode and matches current product category)
+  if (isOutfitCreationMode && currentProductState && item.category === currentProductState.category) {
+    li.classList.add('dimmed');
+  }
+  
+  // Check if this item is selected (for outfit mode, check outfitSelection; otherwise check selectedPickup)
+  let isSelected = false;
+  if (isOutfitCreationMode) {
+    const selectedForCategory = outfitSelection[item.category];
+    isSelected = selectedForCategory && 
+      selectedForCategory.title === item.title && 
+      selectedForCategory.image === item.image;
+  } else {
+    isSelected = selectedPickup && 
+      selectedPickup.title === item.title && 
+      selectedPickup.image === item.image;
+  }
+  
+  if (isSelected) {
+    li.classList.add('selected');
+  }
+  
+  // Click handler for selection
+  li.addEventListener('click', (e) => {
+    // Don't trigger selection if clicking the remove button or if dimmed
+    if (e.target.classList.contains('pickup-remove-btn') || li.classList.contains('dimmed')) {
+      return;
+    }
+    
+    if (isOutfitCreationMode) {
+      // Outfit creation mode: select by category
+      const category = item.category;
+      const selectedForCategory = outfitSelection[category];
+      const isCurrentlySelected = selectedForCategory && 
+        selectedForCategory.title === item.title && 
+        selectedForCategory.image === item.image;
+      
+      if (isCurrentlySelected) {
+        // Deselect
+        outfitSelection[category] = null;
+        li.classList.remove('selected');
+      } else {
+        // Deselect other items in same category
+        const container = pickupsContainer || pickupsListEl;
+        const allItems = container.querySelectorAll('.pickup-item');
+        allItems.forEach(itemEl => {
+          const itemCategory = itemEl.dataset.category;
+          if (itemCategory === category) {
+            itemEl.classList.remove('selected');
+          }
+        });
+        
+        // Select this item
+        outfitSelection[category] = item;
+        li.classList.add('selected');
+      }
+      
+      checkOutfitReady();
+    } else {
+      // Normal mode: single selection
+      const isCurrentlySelected = selectedPickup && 
+        selectedPickup.title === item.title && 
+        selectedPickup.image === item.image;
+      
+      if (isCurrentlySelected) {
+        selectedPickup = null;
+        li.classList.remove('selected');
+      } else {
+        const allItems = pickupsListEl.querySelectorAll('.pickup-item');
+        allItems.forEach(li => li.classList.remove('selected'));
+        selectedPickup = item;
+        li.classList.add('selected');
+      }
+      
+      console.log('Currently Selected:', selectedPickup);
+    }
+  });
+  
+  // Store category for easy lookup
+  li.dataset.category = item.category || 'other';
+  
+  // Image container with remove button
+  if (item.image) {
+    console.log('SNSE: My Pickups image path:', item.image);
+    const imageContainer = document.createElement('div');
+    imageContainer.className = 'pickup-image-container';
+    
+    const img = document.createElement('img');
+    img.src = item.image;
+    img.alt = item.title || 'Saved outfit';
+    imageContainer.appendChild(img);
+    
+    // Remove button (X)
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'pickup-remove-btn';
+    removeBtn.innerHTML = '×';
+    removeBtn.setAttribute('aria-label', 'Remove item');
+    removeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      // Clear selections if removing selected item
+      if (isOutfitCreationMode) {
+        Object.keys(outfitSelection).forEach(cat => {
+          const selected = outfitSelection[cat];
+          if (selected && selected.title === item.title && selected.image === item.image) {
+            outfitSelection[cat] = null;
+          }
+        });
+        checkOutfitReady();
+      } else {
+        if (selectedPickup && 
+            selectedPickup.title === item.title && 
+            selectedPickup.image === item.image) {
+          selectedPickup = null;
+        }
+      }
+      removePickup(item);
+    });
+    imageContainer.appendChild(removeBtn);
+    
+    li.appendChild(imageContainer);
+  }
+
+  const title = document.createElement('p');
+  title.textContent = item.title || 'Unknown item';
+  li.appendChild(title);
+
+  return li;
+};
+
+const renderSection = (title, items, container) => {
+  if (!items || items.length === 0) {
+    return;
+  }
+  
+  // Create category header
+  const header = document.createElement('h3');
+  header.className = 'category-header';
+  header.textContent = title;
+  container.appendChild(header);
+  
+  // Create grid container for this category
+  const grid = document.createElement('ul');
+  grid.className = 'pickups-grid';
+  
+  items.forEach(item => {
+    const li = createPickupItem(item);
+    grid.appendChild(li);
+  });
+  
+  container.appendChild(grid);
+};
+
+const renderPickups = (items = []) => {
+  // Clear the container (pickups-container)
+  if (pickupsContainer) {
+    pickupsContainer.innerHTML = '';
+  } else {
+    // Fallback to pickupsListEl if container doesn't exist
+    pickupsListEl.innerHTML = '';
+  }
+  
+  const container = pickupsContainer || pickupsListEl;
   
   if (!items.length) {
-    pickupsListEl.className = '';
     const li = document.createElement('li');
     li.textContent = 'No pickups saved yet.';
-    pickupsListEl.appendChild(li);
+    const ul = document.createElement('ul');
+    ul.appendChild(li);
+    container.appendChild(ul);
     return;
   }
 
-  items.forEach((item, index) => {
-    const li = document.createElement('li');
-    li.className = 'pickup-item';
-    
-    // Image container with remove button
-    if (item.image) {
-      console.log('SNSE: My Pickups image path:', item.image);
-      const imageContainer = document.createElement('div');
-      imageContainer.className = 'pickup-image-container';
-      
-      const img = document.createElement('img');
-      img.src = item.image;
-      img.alt = item.title || 'Saved outfit';
-      imageContainer.appendChild(img);
-      
-      // Remove button (X)
-      const removeBtn = document.createElement('button');
-      removeBtn.className = 'pickup-remove-btn';
-      removeBtn.innerHTML = '×';
-      removeBtn.setAttribute('aria-label', 'Remove item');
-      removeBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        removePickup(item);
-      });
-      imageContainer.appendChild(removeBtn);
-      
-      li.appendChild(imageContainer);
-    }
-
-    const title = document.createElement('p');
-    title.textContent = item.title || 'Unknown item';
-    li.appendChild(title);
-
-    pickupsListEl.appendChild(li);
-  });
+  // Filter items by category
+  const tops = items.filter(item => item.category === 'top');
+  const bottoms = items.filter(item => item.category === 'bottom');
+  const shoes = items.filter(item => item.category === 'shoes');
+  const others = items.filter(item => !['top', 'bottom', 'shoes'].includes(item.category));
+  
+  // Render each category section
+  renderSection('TOPS', tops, container);
+  renderSection('BOTTOMS', bottoms, container);
+  renderSection('SHOES', shoes, container);
+  
+  // Only show others if not in outfit creation mode
+  if (!isOutfitCreationMode && others.length > 0) {
+    renderSection('OTHER', others, container);
+  }
 };
 
 const removePickup = (itemToRemove) => {
@@ -274,6 +433,84 @@ const loadPickups = () => {
     }
     renderPickups(result?.pickups || []);
   });
+};
+
+const startOutfitCreation = () => {
+  if (!currentProductState) {
+    console.warn('SNSE: No product selected to create outfit from.');
+    return;
+  }
+  
+  // Switch to Pickups tab
+  setActiveTab('pickups');
+  
+  // Pre-fill outfitSelection based on current product's category
+  const currentCategory = currentProductState.category;
+  if (currentCategory === 'top') {
+    outfitSelection.top = currentProductState;
+  } else if (currentCategory === 'bottom') {
+    outfitSelection.bottom = currentProductState;
+  } else if (currentCategory === 'shoes') {
+    outfitSelection.shoes = currentProductState;
+  }
+  
+  // Set outfit creation mode
+  isOutfitCreationMode = true;
+  
+  // Apply galaxy gradient to logo
+  if (snseLogo) {
+    snseLogo.classList.add('galaxy-gradient');
+  }
+  
+  // Show exit button
+  if (exitOutfitBtn) {
+    exitOutfitBtn.classList.remove('hidden');
+  }
+  
+  // Re-render pickups with dimmed category
+  loadPickups();
+  
+  // Check if outfit is ready
+  checkOutfitReady();
+};
+
+const exitOutfitCreation = () => {
+  // Reset outfit creation mode
+  isOutfitCreationMode = false;
+  outfitSelection = { top: null, bottom: null, shoes: null };
+  
+  // Hide exit button
+  if (exitOutfitBtn) {
+    exitOutfitBtn.classList.add('hidden');
+  }
+  
+  // Disable generate button
+  if (generateOutfitBtn) {
+    generateOutfitBtn.disabled = true;
+  }
+  
+  // Remove galaxy gradient from logo
+  if (snseLogo) {
+    snseLogo.classList.remove('galaxy-gradient');
+  }
+  
+  // Re-render pickups normally (without dimming)
+  loadPickups();
+};
+
+const checkOutfitReady = () => {
+  if (!generateOutfitBtn) {
+    return;
+  }
+  
+  // Enable button only if top, bottom, and shoes are all present
+  const isReady = outfitSelection.top && outfitSelection.bottom && outfitSelection.shoes;
+  generateOutfitBtn.disabled = !isReady;
+};
+
+const generateOutfit = () => {
+  console.log('Outfit Selection:', outfitSelection);
+  // TODO: API integration will go here
 };
 
 const savePickup = () => {
@@ -316,6 +553,9 @@ const savePickup = () => {
 };
 
 addPickupBtn?.addEventListener('click', savePickup);
+createOutfitBtn?.addEventListener('click', startOutfitCreation);
+generateOutfitBtn?.addEventListener('click', generateOutfit);
+exitOutfitBtn?.addEventListener('click', exitOutfitCreation);
 
 const updateFromTitle = (title, productImageUrl = null) => {
   currentTitle = title || null;
