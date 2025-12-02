@@ -23,61 +23,85 @@
       .map((selector) => document.querySelector(selector))
       .find((el) => el && el.textContent.trim().length);
 
-  const findProductImage = () => {
-    // Try selectors first
-    for (const selector of imageSelectors) {
-      const img = document.querySelector(selector);
-      if (img) {
-        const src = img.src || img.getAttribute('data-src') || img.getAttribute('data-lazy-src');
-        if (src && !src.includes('logo') && !src.includes('icon') && !src.includes('placeholder')) {
-          return src;
-        }
+  const getProductImage = () => {
+    // Get all img tags on the page
+    const allImages = Array.from(document.querySelectorAll('img'));
+    
+    if (allImages.length === 0) {
+      return null;
+    }
+
+    // Helper function to extract image source
+    const getImageSrc = (img) => {
+      return img.src || img.getAttribute('data-src') || img.getAttribute('data-lazy-src') || null;
+    };
+
+    // Helper function to check if image should be excluded
+    const shouldExclude = (altText) => {
+      const lowerAlt = (altText || '').toLowerCase();
+      return lowerAlt.includes('swatch') || lowerAlt.includes('color');
+    };
+
+    // Priority 1: Find image where alt text (lowercase) contains "prod image"
+    for (const img of allImages) {
+      const alt = (img.alt || '').toLowerCase();
+      const src = getImageSrc(img);
+      if (src && alt.includes('prod image') && !shouldExclude(img.alt)) {
+        console.log('SNSE: Found image (Priority 1 - "prod image"):', src);
+        return src;
       }
     }
 
-    // Fallback: find largest image in product container
-    const productContainers = [
+    // Priority 2: Find image where alt text contains "product"
+    for (const img of allImages) {
+      const alt = (img.alt || '').toLowerCase();
+      const src = getImageSrc(img);
+      if (src && alt.includes('product') && !shouldExclude(img.alt)) {
+        console.log('SNSE: Found image (Priority 2 - "product"):', src);
+        return src;
+      }
+    }
+
+    // Fallback: First image in main product gallery container
+    const gallerySelectors = [
+      '.product-gallery',
+      '.slick-track',
+      '.swiper-wrapper',
+      '[data-test="product-gallery"]',
+      '.product-images',
+      '.pdp-images',
       '[data-test="product-details"]',
       '.product-details',
       '.pdp-container',
-      '.product-container',
-      'main'
+      '.product-container'
     ];
 
-    for (const containerSelector of productContainers) {
-      const container = document.querySelector(containerSelector);
+    for (const gallerySelector of gallerySelectors) {
+      const container = document.querySelector(gallerySelector);
       if (container) {
         const images = Array.from(container.querySelectorAll('img'));
         if (images.length > 0) {
-          // Find the largest image by natural dimensions
-          const validImages = images
-            .map((img) => ({
-              img,
-              src: img.src || img.getAttribute('data-src') || img.getAttribute('data-lazy-src'),
-              width: img.naturalWidth || img.width || 0,
-              height: img.naturalHeight || img.height || 0
-            }))
-            .filter((item) => {
-              const src = item.src || '';
-              return (
-                item.src &&
-                item.width > 200 &&
-                item.height > 200 &&
-                !src.includes('logo') &&
-                !src.includes('icon') &&
-                !src.includes('placeholder') &&
-                !src.includes('avatar')
-              );
-            })
-            .sort((a, b) => (b.width * b.height) - (a.width * a.height));
-
-          if (validImages.length > 0) {
-            return validImages[0].src;
+          for (const img of images) {
+            const src = getImageSrc(img);
+            if (src && !shouldExclude(img.alt)) {
+              console.log('SNSE: Found image (Fallback - gallery container):', src);
+              return src;
+            }
           }
         }
       }
     }
 
+    // Last resort: first valid image (excluding swatches/colors)
+    for (const img of allImages) {
+      const src = getImageSrc(img);
+      if (src && !shouldExclude(img.alt)) {
+        console.log('SNSE: Found image (Last resort):', src);
+        return src;
+      }
+    }
+
+    console.warn('SNSE: No valid product image found');
     return null;
   };
 
@@ -99,13 +123,14 @@
     });
   };
 
-  const sendTitle = (titleElement) => {
+  const sendTitle = (titleElement, productImageUrl = null) => {
     const title = titleElement.textContent.trim();
-    const productImageUrl = findProductImage();
     console.log('SNSE Found:', title);
+    
     if (productImageUrl) {
       console.log('SNSE Image URL:', productImageUrl);
     }
+    
     persistTitle(title, productImageUrl);
     chrome.runtime.sendMessage({
       type: 'snse-product-title',
@@ -114,10 +139,37 @@
     });
   };
 
+  let lastImageUrl = null;
+  let debounceTimer = null;
+
+  const checkAndUpdateImage = () => {
+    const titleElement = findTitle();
+    if (!titleElement) {
+      return;
+    }
+
+    const newImageUrl = getProductImage();
+    if (newImageUrl && newImageUrl !== lastImageUrl) {
+      const title = titleElement.textContent.trim();
+      console.log('SNSE: Image URL changed, updating:', newImageUrl);
+      lastImageUrl = newImageUrl;
+      
+      persistTitle(title, newImageUrl);
+      chrome.runtime.sendMessage({
+        type: 'snse-product-title',
+        title,
+        productImageUrl: newImageUrl
+      });
+    }
+  };
+
   const pollForTitle = (attempt = 0) => {
     const titleElement = findTitle();
     if (titleElement) {
-      sendTitle(titleElement);
+      const title = titleElement.textContent.trim();
+      const productImageUrl = getProductImage();
+      lastImageUrl = productImageUrl;
+      sendTitle(titleElement, productImageUrl);
       return;
     }
     if (attempt < 10) {
@@ -127,5 +179,44 @@
     }
   };
 
-  pollForTitle();
+  // Set up MutationObserver for SPA updates
+  const startObserver = () => {
+    const observer = new MutationObserver(() => {
+      // Debounce: wait 500ms after last change
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+      }
+      debounceTimer = setTimeout(() => {
+        checkAndUpdateImage();
+      }, 500);
+    });
+
+    observer.observe(document.body, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ['src', 'data-src', 'data-lazy-src']
+    });
+
+    return observer;
+  };
+
+  // Initialize: start polling and observer
+  if (document.body) {
+    startObserver();
+    pollForTitle();
+  } else {
+    // Wait for body to be available
+    const bodyReadyObserver = new MutationObserver(() => {
+      if (document.body) {
+        startObserver();
+        pollForTitle();
+        bodyReadyObserver.disconnect();
+      }
+    });
+    bodyReadyObserver.observe(document.documentElement, {
+      childList: true,
+      subtree: true
+    });
+  }
 })();
