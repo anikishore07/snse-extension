@@ -28,6 +28,35 @@ let currentTitle = null;
 let currentProductImageUrl = null;
 let currentProductState = null;
 
+const categorizeItem = (title) => {
+  if (!title) {
+    return "accessory";
+  }
+  
+  const lowerTitle = title.toLowerCase();
+  
+  // Top keywords
+  const topKeywords = ["hoodie", "tee", "t-shirt", "shirt", "sweater", "jacket", "top", "polo", "tank"];
+  if (topKeywords.some(keyword => lowerTitle.includes(keyword))) {
+    return "top";
+  }
+  
+  // Bottom keywords
+  const bottomKeywords = ["jean", "pant", "short", "jogger", "sweatpant", "bottom", "skirt", "trouser"];
+  if (bottomKeywords.some(keyword => lowerTitle.includes(keyword))) {
+    return "bottom";
+  }
+  
+  // Shoes keywords
+  const shoesKeywords = ["shoe", "sneaker", "boot", "sandal", "slide", "loafer", "flats"];
+  if (shoesKeywords.some(keyword => lowerTitle.includes(keyword))) {
+    return "shoes";
+  }
+  
+  // Default to accessory if no match
+  return "accessory";
+};
+
 const renderOutfit = (outfit, productImageUrl = null) => {
   outfitResultEl.innerHTML = '';
   if (outfit) {
@@ -313,7 +342,7 @@ const updateFromTitle = (title, productImageUrl = null) => {
       id: Date.now().toString(),
       name: title,
       image: productImageUrl || null,
-      category: "uncategorized",
+      category: categorizeItem(title),
       outfitImage: null,
       title: title
     };
