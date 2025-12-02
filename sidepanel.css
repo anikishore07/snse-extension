@@ -55,6 +55,172 @@ body {
   background-color: #333;
 }
 
+/* Header */
+.main-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.main-header h1 {
+  color: #333;
+  margin: 0;
+  padding: 0;
+  font-size: 1.5rem;
+}
+
+.profile-icon-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #333;
+  transition: color 0.2s ease;
+}
+
+.profile-icon-btn:hover {
+  color: #666;
+}
+
+.profile-icon-btn svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* Profile Overlay */
+.profile-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #ffffff;
+  z-index: 100;
+  overflow-y: auto;
+}
+
+.profile-overlay.hidden {
+  display: none;
+}
+
+.profile-overlay-content {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 40px 20px;
+  position: relative;
+}
+
+.profile-close-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: none;
+  border: none;
+  font-size: 32px;
+  line-height: 1;
+  cursor: pointer;
+  color: #333;
+  padding: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+}
+
+.profile-close-btn:hover {
+  color: #666;
+}
+
+.profile-overlay-content h2 {
+  margin: 0 0 24px 0;
+  color: #333;
+  font-size: 1.5rem;
+}
+
+#profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-weight: 500;
+  color: #333;
+  font-size: 0.9rem;
+}
+
+.form-group input[type="file"],
+.form-group input[type="password"],
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.9rem;
+  box-sizing: border-box;
+}
+
+.form-group input[type="file"] {
+  padding: 8px;
+  cursor: pointer;
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.headshot-preview {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin: 12px auto 0;
+  border: 2px solid #e0e0e0;
+  display: block;
+}
+
+.headshot-preview.hidden {
+  display: none;
+}
+
+.form-actions {
+  margin-top: 8px;
+}
+
+.save-profile-btn {
+  background-color: #000;
+  color: #ffffff;
+  border: none;
+  width: 100%;
+  padding: 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 1rem;
+  transition: background-color 0.2s ease;
+}
+
+.save-profile-btn:hover {
+  background-color: #333;
+}
+
 /* Additional styles for existing elements */
 h1 {
   color: #333;

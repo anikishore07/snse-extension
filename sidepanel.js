@@ -299,5 +299,113 @@ chrome.runtime.onMessage.addListener((message) => {
   }
 });
 
+// Profile functionality
+const profileIcon = document.getElementById('profile-icon');
+const profileOverlay = document.getElementById('profile-overlay');
+const profileCloseBtn = document.getElementById('profile-close');
+const headshotInput = document.getElementById('user-headshot');
+const headshotPreview = document.getElementById('headshot-preview');
+const profileForm = document.getElementById('profile-form');
+const userGender = document.getElementById('user-gender');
+const userBodyType = document.getElementById('user-body-type');
+const userDescription = document.getElementById('user-description');
+const apiKeyInput = document.getElementById('api-key');
+
+// Show overlay when profile icon is clicked
+profileIcon?.addEventListener('click', () => {
+  if (profileOverlay) {
+    profileOverlay.classList.remove('hidden');
+  }
+});
+
+// Hide overlay when close button is clicked
+profileCloseBtn?.addEventListener('click', () => {
+  if (profileOverlay) {
+    profileOverlay.classList.add('hidden');
+  }
+});
+
+// Handle headshot file input
+headshotInput?.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64String = event.target.result;
+      if (headshotPreview) {
+        headshotPreview.src = base64String;
+        headshotPreview.classList.remove('hidden');
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+});
+
+// Save profile
+profileForm?.addEventListener('submit', (e) => {
+  e.preventDefault();
+  
+  const profileData = {
+    headshot: headshotPreview?.src && !headshotPreview.classList.contains('hidden') 
+      ? headshotPreview.src 
+      : null,
+    gender: userGender?.value || '',
+    bodyType: userBodyType?.value || '',
+    description: userDescription?.value || '',
+    apiKey: apiKeyInput?.value || ''
+  };
+
+  chrome.storage?.local?.set(
+    { snseUserProfile: profileData },
+    () => {
+      if (chrome.runtime.lastError) {
+        console.warn('SNSE: Failed to save profile', chrome.runtime.lastError);
+      } else {
+        console.log('SNSE: Profile saved successfully');
+        // Close overlay after saving
+        if (profileOverlay) {
+          profileOverlay.classList.add('hidden');
+        }
+      }
+    }
+  );
+});
+
+// Load profile
+const loadProfile = () => {
+  if (!chrome.storage?.local) {
+    return;
+  }
+
+  chrome.storage.local.get('snseUserProfile', (result) => {
+    if (chrome.runtime.lastError) {
+      console.warn('SNSE: Failed to load profile', chrome.runtime.lastError);
+      return;
+    }
+
+    const profile = result?.snseUserProfile;
+    if (profile) {
+      // Pre-fill form fields
+      if (profile.headshot && headshotPreview) {
+        headshotPreview.src = profile.headshot;
+        headshotPreview.classList.remove('hidden');
+      }
+      if (profile.gender && userGender) {
+        userGender.value = profile.gender;
+      }
+      if (profile.bodyType && userBodyType) {
+        userBodyType.value = profile.bodyType;
+      }
+      if (profile.description && userDescription) {
+        userDescription.value = profile.description;
+      }
+      if (profile.apiKey && apiKeyInput) {
+        apiKeyInput.value = profile.apiKey;
+      }
+    }
+  });
+};
+
 hydrateFromStorage();
+loadProfile();
 

@@ -7,7 +7,15 @@
   <link rel="stylesheet" href="sidepanel.css">
 </head>
 <body>
-  <h1>SNSE Outfit Ideas</h1>
+  <header class="main-header">
+    <h1>SNSE</h1>
+    <button id="profile-icon" class="profile-icon-btn" type="button" aria-label="Open profile">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 12C14.7614 12 17 9.76142 17 7C17 4.23858 14.7614 2 12 2C9.23858 2 7 4.23858 7 7C7 9.76142 9.23858 12 12 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M20.59 22C20.59 18.13 16.74 15 12 15C7.26 15 3.41 18.13 3.41 22" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+  </header>
   <div class="tabs">
     <button id="tab-inspiration" class="tab-button active">Inspiration</button>
     <button id="tab-pickups" class="tab-button">My Pickups</button>
@@ -23,6 +31,54 @@
       <li>No pickups saved yet.</li>
     </ul>
   </div>
+
+  <!-- Profile Overlay -->
+  <div id="profile-overlay" class="profile-overlay hidden">
+    <div class="profile-overlay-content">
+      <button id="profile-close" class="profile-close-btn" type="button" aria-label="Close profile">×</button>
+      <h2>User Profile</h2>
+      <form id="profile-form">
+        <div class="form-group">
+          <label for="user-headshot">Headshot</label>
+          <input type="file" id="user-headshot" accept="image/*">
+          <img id="headshot-preview" class="headshot-preview hidden" alt="Headshot preview">
+        </div>
+        <div class="form-group">
+          <label for="user-gender">Gender</label>
+          <select id="user-gender">
+            <option value="">Select gender</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+            <option value="Non-Binary">Non-Binary</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="user-body-type">Body Type</label>
+          <select id="user-body-type">
+            <option value="">Select body type</option>
+            <option value="Slim">Slim</option>
+            <option value="Average">Average</option>
+            <option value="Athletic">Athletic</option>
+            <option value="Muscular">Muscular</option>
+            <option value="Curvy">Curvy</option>
+            <option value="Plus-Size">Plus-Size</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="user-description">Description</label>
+          <textarea id="user-description" placeholder="e.g., 6'1, Indian, short beard, wears glasses" rows="4"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="api-key">API Key</label>
+          <input type="password" id="api-key" placeholder="Gemini/Cloud API Key">
+        </div>
+        <div class="form-actions">
+          <button type="submit" id="save-profile" class="save-profile-btn">Save Profile</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script type="module" src="sidepanel.js"></script>
 </body>
 </html>
