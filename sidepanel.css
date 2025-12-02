@@ -29,11 +29,51 @@ body {
 }
 
 /* Pickup Images */
+.pickups-grid li {
+  position: relative;
+  padding: 0;
+  border-bottom: none;
+}
+
+.pickup-image-container {
+  position: relative;
+  width: 100%;
+}
+
 .pickups-grid li img {
   width: 100%;
   aspect-ratio: 1 / 1;
   object-fit: cover;
   border-radius: 8px;
+  display: block;
+}
+
+.pickup-remove-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: #ffffff;
+  border: none;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease;
+  z-index: 10;
+}
+
+.pickup-remove-btn:hover {
+  background-color: rgba(0, 0, 0, 0.9);
+}
+
+.pickup-item:hover .pickup-remove-btn {
+  display: flex;
 }
 
 /* Button */
@@ -255,11 +295,6 @@ h1 {
 }
 
 /* Pickup card styling */
-.pickups-grid li {
-  padding: 0;
-  border-bottom: none;
-}
-
 .pickups-grid li p {
   margin: 8px 0 0 0;
   font-size: 0.875rem;

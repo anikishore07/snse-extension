@@ -26,6 +26,7 @@ if (closetMatchesSection) {
 
 let currentTitle = null;
 let currentProductImageUrl = null;
+let currentProductState = null;
 
 const renderOutfit = (outfit, productImageUrl = null) => {
   outfitResultEl.innerHTML = '';
@@ -129,13 +130,13 @@ const findMatchesInPickups = (currentItem) =>
       return;
     }
 
-    chrome.storage.local.get('snsePickups', (result) => {
+    chrome.storage.local.get('pickups', (result) => {
       if (chrome.runtime.lastError) {
         console.warn('SNSE: Failed to read pickups', chrome.runtime.lastError);
         resolve([]);
         return;
       }
-      const pickups = result?.snsePickups || [];
+      const pickups = result?.pickups || [];
       const matches = pickups.filter(
         (pickup) => pickup.category && currentItem.compatibleCategories.includes(pickup.category)
       );
@@ -154,9 +155,8 @@ const setActiveTab = (tab) => {
   tabInspiration.classList.toggle('active', isInspiration);
   tabPickups.classList.toggle('active', !isInspiration);
 
-  if (isInspiration && currentTitle) {
-    const currentItem = outfitData[currentTitle];
-    updateClosetMatches(currentItem);
+  if (isInspiration && currentProductState) {
+    updateClosetMatches(currentProductState);
   }
 };
 
@@ -177,15 +177,33 @@ const renderPickups = (items = []) => {
     return;
   }
 
-  items.forEach((item) => {
+  items.forEach((item, index) => {
     const li = document.createElement('li');
+    li.className = 'pickup-item';
     
+    // Image container with remove button
     if (item.image) {
       console.log('SNSE: My Pickups image path:', item.image);
+      const imageContainer = document.createElement('div');
+      imageContainer.className = 'pickup-image-container';
+      
       const img = document.createElement('img');
       img.src = item.image;
       img.alt = item.title || 'Saved outfit';
-      li.appendChild(img);
+      imageContainer.appendChild(img);
+      
+      // Remove button (X)
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'pickup-remove-btn';
+      removeBtn.innerHTML = '×';
+      removeBtn.setAttribute('aria-label', 'Remove item');
+      removeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        removePickup(item);
+      });
+      imageContainer.appendChild(removeBtn);
+      
+      li.appendChild(imageContainer);
     }
 
     const title = document.createElement('p');
@@ -196,39 +214,61 @@ const renderPickups = (items = []) => {
   });
 };
 
+const removePickup = (itemToRemove) => {
+  chrome.storage?.local?.get('pickups', (result) => {
+    if (chrome.runtime.lastError) {
+      console.warn('SNSE: Failed to load pickups for removal', chrome.runtime.lastError);
+      return;
+    }
+    const existing = result?.pickups || [];
+    // Remove item by matching both title and image (to handle colorways correctly)
+    const updated = existing.filter((item) => 
+      !(item.title === itemToRemove.title && item.image === itemToRemove.image)
+    );
+    
+    chrome.storage.local.set({ pickups: updated }, () => {
+      if (chrome.runtime.lastError) {
+        console.warn('SNSE: Failed to remove pickup', chrome.runtime.lastError);
+        return;
+      }
+      renderPickups(updated);
+      console.log('SNSE: Pickup removed.');
+    });
+  });
+};
+
 const loadPickups = () => {
-  chrome.storage?.local?.get('snsePickups', (result) => {
+  chrome.storage?.local?.get('pickups', (result) => {
     if (chrome.runtime.lastError) {
       console.warn('SNSE: Failed to load pickups', chrome.runtime.lastError);
       return;
     }
-    renderPickups(result?.snsePickups || []);
+    renderPickups(result?.pickups || []);
   });
 };
 
 const savePickup = () => {
-  if (!currentTitle) {
+  if (!currentProductState) {
     console.warn('SNSE: No product selected to save.');
     return;
   }
-  chrome.storage?.local?.get('snsePickups', (result) => {
-    const existing = result?.snsePickups || [];
-    if (existing.some((item) => item.title === currentTitle)) {
-      console.log('SNSE: Item already saved.');
-      return;
-    }
-    const outfit = outfitData[currentTitle];
-    if (!outfit) {
-      console.warn('SNSE: No outfit data found for current selection.');
+  chrome.storage?.local?.get('pickups', (result) => {
+    const existing = result?.pickups || [];
+    // Check for duplicates: require BOTH title AND image to match
+    const isDuplicate = existing.some((item) => 
+      item.title === currentProductState.title && 
+      item.image === currentProductState.image
+    );
+    if (isDuplicate) {
+      console.log('SNSE: Item already saved (same name and image).');
       return;
     }
     const newPickup = {
-      title: currentTitle,
-      ...outfit,
+      ...currentProductState,
       savedAt: Date.now()
     };
     chrome.storage.local.set(
-      { snsePickups: [...existing, newPickup] },
+      { pickups: [...existing, newPickup] },
       () => {
         if (chrome.runtime.lastError) {
           console.warn('SNSE: Failed to save pickup', chrome.runtime.lastError);
@@ -236,7 +276,10 @@ const savePickup = () => {
         }
         const updated = [...existing, newPickup];
         renderPickups(updated);
-        updateClosetMatches(outfit);
+        // Update closet matches if this is a hardcoded item with compatibleCategories
+        if (currentProductState.compatibleCategories) {
+          updateClosetMatches(currentProductState);
+        }
         console.log('SNSE: Pickup saved.');
       }
     );
@@ -248,12 +291,34 @@ addPickupBtn?.addEventListener('click', savePickup);
 const updateFromTitle = (title, productImageUrl = null) => {
   currentTitle = title || null;
   currentProductImageUrl = productImageUrl || null;
+  
   if (!title) {
+    currentProductState = null;
     renderOutfit(null, productImageUrl);
     return;
   }
+
+  // Check if title exists in outfitData (hardcoded test items)
   const outfit = outfitData[title];
-  renderOutfit(outfit, productImageUrl);
+  if (outfit) {
+    // Hardcoded item: deep copy the outfit object and add title
+    currentProductState = {
+      ...outfit,
+      title: title
+    };
+    renderOutfit(outfit, productImageUrl);
+  } else {
+    // Scraped/wild item: create new object
+    currentProductState = {
+      id: Date.now().toString(),
+      name: title,
+      image: productImageUrl || null,
+      category: "uncategorized",
+      outfitImage: null,
+      title: title
+    };
+    renderOutfit(null, productImageUrl);
+  }
 };
 
 const hydrateFromStorage = () => {
@@ -261,7 +326,7 @@ const hydrateFromStorage = () => {
     console.warn('SNSE: chrome.storage.local unavailable in side panel.');
     return;
   }
-  chrome.storage.local.get(['snseLastProductTitle', 'snseLastProductImageUrl', 'snsePickups'], (result) => {
+  chrome.storage.local.get(['snseLastProductTitle', 'snseLastProductImageUrl', 'pickups'], (result) => {
     if (chrome.runtime.lastError) {
       console.warn('SNSE: Failed to read stored data', chrome.runtime.lastError);
       return;
@@ -269,7 +334,7 @@ const hydrateFromStorage = () => {
     if (result?.snseLastProductTitle) {
       updateFromTitle(result.snseLastProductTitle, result.snseLastProductImageUrl);
     }
-    renderPickups(result?.snsePickups || []);
+    renderPickups(result?.pickups || []);
   });
 };
 
@@ -283,11 +348,11 @@ chrome.storage?.onChanged?.addListener((changes, areaName) => {
       // Update image if title is already set
       updateFromTitle(currentTitle, changes.snseLastProductImageUrl.newValue);
     }
-    if (changes.snsePickups) {
-      const nextPickups = changes.snsePickups.newValue || [];
+    if (changes.pickups) {
+      const nextPickups = changes.pickups.newValue || [];
       renderPickups(nextPickups);
-      if (currentTitle) {
-        updateClosetMatches(outfitData[currentTitle]);
+      if (currentProductState) {
+        updateClosetMatches(currentProductState);
       }
     }
   }
@@ -405,6 +470,39 @@ const loadProfile = () => {
     }
   });
 };
+
+// One-time cleanup: Migrate old 'snsePickups' data to 'pickups' and remove old key
+const cleanupOldPickupsData = () => {
+  if (!chrome.storage?.local) {
+    return;
+  }
+  chrome.storage.local.get(['snsePickups', 'pickups'], (result) => {
+    if (chrome.runtime.lastError) {
+      console.warn('SNSE: Failed to check for old data', chrome.runtime.lastError);
+      return;
+    }
+    // If old data exists and new data doesn't, migrate it
+    if (result?.snsePickups && !result?.pickups) {
+      chrome.storage.local.set({ pickups: result.snsePickups }, () => {
+        if (!chrome.runtime.lastError) {
+          console.log('SNSE: Migrated old pickups data to new format');
+          // Remove old key
+          chrome.storage.local.remove('snsePickups', () => {
+            console.log('SNSE: Removed old snsePickups key');
+          });
+        }
+      });
+    } else if (result?.snsePickups) {
+      // Old data exists but new data also exists - just remove old key
+      chrome.storage.local.remove('snsePickups', () => {
+        console.log('SNSE: Removed old snsePickups key');
+      });
+    }
+  });
+};
+
+// Run cleanup on load
+cleanupOldPickupsData();
 
 hydrateFromStorage();
 loadProfile();
