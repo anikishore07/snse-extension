@@ -23,6 +23,7 @@
   <div id="inspiration-view" class="tab-content">
     <div id="outfit-result">
       <p>Waiting for product info...</p>
+      <img id="product-image" style="display: none;" alt="Product image">
     </div>
     <button id="add-pickup" type="button">Add to Pickups</button>
     <button id="create-outfit-btn" type="button" class="btn-orange-gradient">Create Outfit</button>
@@ -42,7 +43,10 @@
   <!-- Result Overlay -->
   <div id="result-overlay" class="result-overlay hidden">
     <div class="result-overlay-content">
-      <div id="loading-state" class="loading-state">Generating your fit...</div>
+      <div id="loading-state" class="loading-state">
+        <h1 class="loading-logo galaxy-gradient">SNSE</h1>
+        <p class="loading-message">Generating your outfit...</p>
+      </div>
       <img id="generated-image" class="generated-image hidden" alt="Generated outfit result">
       <button id="result-close-btn" class="result-close-btn" type="button" aria-label="Close result">Close</button>
     </div>

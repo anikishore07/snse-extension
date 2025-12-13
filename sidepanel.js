@@ -27,6 +27,24 @@ async function urlToBase64(url) {
   }
 }
 
+// Helper: Get current product URL from active tab
+async function getCurrentProductUrl() {
+  try {
+    if (!chrome.tabs) {
+      console.warn('SNSE: chrome.tabs API not available');
+      return null;
+    }
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tabs && tabs.length > 0 && tabs[0].url) {
+      return tabs[0].url;
+    }
+    return null;
+  } catch (error) {
+    console.error('SNSE: Error getting current product URL:', error);
+    return null;
+  }
+}
+
 const outfitResultEl = document.getElementById('outfit-result');
 const addPickupBtn = document.getElementById('add-pickup');
 const createOutfitBtn = document.getElementById('create-outfit-btn');
@@ -92,36 +110,68 @@ const categorizeItem = (title) => {
   return "accessory";
 };
 
-const renderOutfit = (outfit, productImageUrl = null) => {
-  outfitResultEl.innerHTML = '';
+const renderOutfit = async (outfit, productImageUrl = null) => {
+  // Get the existing product-image element
+  const imgEl = document.getElementById('product-image');
+  
+  // Safety check: return early if element doesn't exist
+  if (!imgEl) {
+    console.warn('SNSE: product-image element not found');
+    return;
+  }
+
+  // Clear any other content but preserve the product-image element
+  const initialMessage = outfitResultEl.querySelector('p');
+  if (initialMessage && initialMessage.textContent === 'Waiting for product info...') {
+    initialMessage.style.display = 'none';
+  }
+
   if (outfit) {
     const inspirationImage = outfit.outfitImage || outfit.image || null;
     console.log('SNSE: Inspiration tab image path:', inspirationImage);
 
     if (inspirationImage) {
-      const img = document.createElement('img');
-      img.src = inspirationImage;
-      img.alt = 'Suggested outfit';
-      outfitResultEl.appendChild(img);
+      // Use existing element for outfit images too
+      imgEl.src = inspirationImage;
+      imgEl.alt = 'Suggested outfit';
+      imgEl.style.display = 'block';
+    } else {
+      imgEl.style.display = 'none';
     }
-
-    const caption = document.createElement('p');
-    caption.textContent = 'Here is an outfit idea for this product.';
-    outfitResultEl.appendChild(caption);
   } else {
     // Display product image if available, otherwise show message
     if (productImageUrl) {
-      const img = document.createElement('img');
-      img.src = productImageUrl;
-      img.alt = 'Product image';
-      outfitResultEl.appendChild(img);
-      const caption = document.createElement('p');
-      caption.textContent = 'Product image from page.';
-      outfitResultEl.appendChild(caption);
+      // Load Cached Look: Check storage for cached generated outfit
+      const productUrl = await getCurrentProductUrl();
+      let imageToDisplay = productImageUrl; // Default to original product image
+      
+      if (productUrl && chrome.storage?.local) {
+        const cacheKey = "look_" + productUrl;
+        // Use Promise to await storage check
+        const cachedImage = await new Promise((resolve) => {
+          chrome.storage.local.get(cacheKey, (data) => {
+            if (chrome.runtime.lastError) {
+              console.warn('SNSE: Error loading cached look:', chrome.runtime.lastError);
+              resolve(null);
+            } else {
+              resolve(data[cacheKey] || null);
+            }
+          });
+        });
+        
+        if (cachedImage) {
+          // Cached outfit found - use it
+          imageToDisplay = cachedImage;
+        }
+      }
+      
+      // Update existing element (cached outfit if found, otherwise original product image)
+      imgEl.src = imageToDisplay;
+      imgEl.alt = imageToDisplay === productImageUrl ? 'Product image' : 'Generated outfit';
+      imgEl.style.display = 'block';
     } else {
-      const message = document.createElement('p');
-      message.textContent = 'No outfit ideas yet for this item.';
-      outfitResultEl.appendChild(message);
+      // No product image available - hide the element
+      imgEl.style.display = 'none';
     }
   }
 
@@ -615,10 +665,36 @@ const generateOutfit = async () => {
       return;
     }
 
-    // Hide loading, show image
+    // Hide loading, show image in overlay
     loadingStateEl.classList.add('hidden');
     generatedImageEl.src = imageUrl;
     generatedImageEl.classList.remove('hidden');
+
+    // Update the Display: Show generated outfit in Inspiration tab (Fitting Room)
+    const imgEl = document.getElementById('product-image');
+    if (imgEl) {
+      imgEl.src = imageUrl;
+      imgEl.alt = 'Generated outfit';
+      imgEl.style.display = 'block';
+    } else {
+      console.warn('SNSE: product-image element not found when updating generated outfit');
+    }
+
+    // Save Generated Look: Cache the generated outfit image for this product URL
+    const productUrl = await getCurrentProductUrl();
+    if (productUrl && chrome.storage?.local) {
+      const cacheKey = "look_" + productUrl;
+      chrome.storage.local.set({ [cacheKey]: imageUrl }, () => {
+        if (chrome.runtime.lastError) {
+          console.warn('SNSE: Failed to save generated look cache:', chrome.runtime.lastError);
+        } else {
+          console.log('SNSE: Generated look cached for:', productUrl);
+        }
+      });
+    }
+    
+    // CRITICAL: Do NOT update currentProductState - preserve original product image
+    // currentProductState remains unchanged so "Add to Pickups" saves the individual item
   } catch (error) {
     console.error('SNSE: Error during generateOutfit:', error);
     console.error('SNSE: Error details:', {

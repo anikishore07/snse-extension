@@ -5,7 +5,8 @@
   "description": "Shopping Helper",
   "permissions": [
     "sidePanel",
-    "storage"
+    "storage",
+    "tabs"
   ],
   "background": {
     "service_worker": "background.js"
