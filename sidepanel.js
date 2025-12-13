@@ -5,6 +5,28 @@ import { outfitData } from './outfit-data.js';
 
 console.log('SNSE side panel loaded');
 
+// Helper: Convert Blob to Base64
+const blobToBase64 = (blob) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+};
+
+// Helper: Fetch URL and convert to Base64
+async function urlToBase64(url) {
+  try {
+    const response = await fetch(url, { mode: 'cors' });
+    const blob = await response.blob();
+    return await blobToBase64(blob);
+  } catch (error) {
+    console.error("Failed to convert image:", error);
+    return null; // Return null so we can handle it
+  }
+}
+
 const outfitResultEl = document.getElementById('outfit-result');
 const addPickupBtn = document.getElementById('add-pickup');
 const createOutfitBtn = document.getElementById('create-outfit-btn');
@@ -17,6 +39,10 @@ const inspirationView = document.getElementById('inspiration-view');
 const pickupsView = document.getElementById('pickups-view');
 const tabInspiration = document.getElementById('tab-inspiration');
 const tabPickups = document.getElementById('tab-pickups');
+const resultOverlay = document.getElementById('result-overlay');
+const loadingStateEl = document.getElementById('loading-state');
+const generatedImageEl = document.getElementById('generated-image');
+const resultCloseBtn = document.getElementById('result-close-btn');
 const closetMatchesSection = inspirationView ? document.createElement('div') : null;
 
 if (closetMatchesSection) {
@@ -35,6 +61,7 @@ let currentProductState = null;
 let selectedPickup = null;
 let outfitSelection = { top: null, bottom: null, shoes: null };
 let isOutfitCreationMode = false;
+let userHeadshot = null; // Global variable to store headshot Base64 string
 
 const categorizeItem = (title) => {
   if (!title) {
@@ -508,31 +535,149 @@ const checkOutfitReady = () => {
   generateOutfitBtn.disabled = !isReady;
 };
 
-const generateOutfit = () => {
+const generateOutfit = async () => {
   console.log('Outfit Selection:', outfitSelection);
-  // TODO: API integration will go here
+
+  if (!resultOverlay || !loadingStateEl || !generatedImageEl) {
+    console.warn('SNSE: Result overlay elements not found.');
+    return;
+  }
+
+  // Sanitization step: Convert URL images to Base64 before API call
+  // Check and convert top image
+  if (outfitSelection.top && outfitSelection.top.image && outfitSelection.top.image.startsWith('http')) {
+    try {
+      const base64Image = await urlToBase64(outfitSelection.top.image);
+      if (base64Image) {
+        outfitSelection.top.image = base64Image;
+      } else {
+        console.error('SNSE: Failed to convert top image to Base64');
+        alert('Failed to process top image. Please try again.');
+        return;
+      }
+    } catch (error) {
+      console.error('SNSE: Error converting top image:', error);
+      alert(`Failed to process top image: ${error.message || error}. Please check the console for details.`);
+      return;
+    }
+  }
+
+  // Check and convert bottom image
+  if (outfitSelection.bottom && outfitSelection.bottom.image && outfitSelection.bottom.image.startsWith('http')) {
+    try {
+      const base64Image = await urlToBase64(outfitSelection.bottom.image);
+      if (base64Image) {
+        outfitSelection.bottom.image = base64Image;
+      } else {
+        console.error('SNSE: Failed to convert bottom image to Base64');
+        alert('Failed to process bottom image. Please try again.');
+        return;
+      }
+    } catch (error) {
+      console.error('SNSE: Error converting bottom image:', error);
+      alert(`Failed to process bottom image: ${error.message || error}. Please check the console for details.`);
+      return;
+    }
+  }
+
+  // Check and convert shoes image
+  if (outfitSelection.shoes && outfitSelection.shoes.image && outfitSelection.shoes.image.startsWith('http')) {
+    try {
+      const base64Image = await urlToBase64(outfitSelection.shoes.image);
+      if (base64Image) {
+        outfitSelection.shoes.image = base64Image;
+      } else {
+        console.error('SNSE: Failed to convert shoes image to Base64');
+        alert('Failed to process shoes image. Please try again.');
+        return;
+      }
+    } catch (error) {
+      console.error('SNSE: Error converting shoes image:', error);
+      alert(`Failed to process shoes image: ${error.message || error}. Please check the console for details.`);
+      return;
+    }
+  }
+
+  console.log("Payload Ready:", outfitSelection);
+
+  // Show overlay and loading state
+  resultOverlay.classList.remove('hidden');
+  loadingStateEl.classList.remove('hidden');
+  generatedImageEl.classList.add('hidden');
+
+  try {
+    const { generateOutfitImage } = await import('./api-handler.js');
+    const imageUrl = await generateOutfitImage(outfitSelection);
+    if (!imageUrl) {
+      // Error already handled in generateOutfitImage
+      loadingStateEl.classList.add('hidden');
+      resultOverlay.classList.add('hidden');
+      return;
+    }
+
+    // Hide loading, show image
+    loadingStateEl.classList.add('hidden');
+    generatedImageEl.src = imageUrl;
+    generatedImageEl.classList.remove('hidden');
+  } catch (error) {
+    console.error('SNSE: Error during generateOutfit:', error);
+    console.error('SNSE: Error details:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
+    alert(`Failed to generate outfit: ${error.message || error}. Please check the console for details.`);
+    loadingStateEl.classList.add('hidden');
+    resultOverlay.classList.add('hidden');
+  }
 };
 
-const savePickup = () => {
+const savePickup = async () => {
   if (!currentProductState) {
     console.warn('SNSE: No product selected to save.');
     return;
   }
+
+  // Get the image URL from currentProductState
+  const imageUrl = currentProductState.image || currentProductState.imageUrl || null;
+  
+  if (!imageUrl) {
+    console.warn('SNSE: No image URL found in currentProductState.');
+    return;
+  }
+
+  // Convert the image URL to Base64 (freeze it)
+  let base64Image = imageUrl;
+  
+  // Only convert if it's not already a Base64 data URL
+  if (!imageUrl.startsWith('data:')) {
+    base64Image = await urlToBase64(imageUrl);
+    if (!base64Image) {
+      alert("Could not save image. Is it a valid URL?");
+      return;
+    }
+  }
+
   chrome.storage?.local?.get('pickups', (result) => {
     const existing = result?.pickups || [];
+    
     // Check for duplicates: require BOTH title AND image to match
+    // Compare Base64 strings for duplicate detection
     const isDuplicate = existing.some((item) => 
-      item.title === currentProductState.title && 
-      item.image === currentProductState.image
+      (item.title === currentProductState.title || item.name === currentProductState.name || item.name === currentProductState.title) && 
+      item.image === base64Image
     );
     if (isDuplicate) {
       console.log('SNSE: Item already saved (same name and image).');
       return;
     }
+    
     const newPickup = {
       ...currentProductState,
+      image: base64Image, // Save Base64 string instead of URL
       savedAt: Date.now()
     };
+    
     chrome.storage.local.set(
       { pickups: [...existing, newPickup] },
       () => {
@@ -546,7 +691,7 @@ const savePickup = () => {
         if (currentProductState.compatibleCategories) {
           updateClosetMatches(currentProductState);
         }
-        console.log('SNSE: Pickup saved.');
+        console.log('SNSE: Pickup saved with Base64 image.');
       }
     );
   });
@@ -556,6 +701,44 @@ addPickupBtn?.addEventListener('click', savePickup);
 createOutfitBtn?.addEventListener('click', startOutfitCreation);
 generateOutfitBtn?.addEventListener('click', generateOutfit);
 exitOutfitBtn?.addEventListener('click', exitOutfitCreation);
+
+// Result overlay close handler
+resultCloseBtn?.addEventListener('click', () => {
+  if (resultOverlay) {
+    resultOverlay.classList.add('hidden');
+  }
+  if (generatedImageEl) {
+    generatedImageEl.src = '';
+    generatedImageEl.classList.add('hidden');
+  }
+  if (loadingStateEl) {
+    loadingStateEl.classList.add('hidden');
+  }
+});
+resultCloseBtn?.addEventListener('click', () => {
+  if (resultOverlay) {
+    resultOverlay.classList.add('hidden');
+  }
+  if (generatedImageEl) {
+    generatedImageEl.src = '';
+    generatedImageEl.classList.add('hidden');
+  }
+  if (loadingStateEl) {
+    loadingStateEl.classList.add('hidden');
+  }
+});
+resultCloseBtn?.addEventListener('click', () => {
+  if (resultOverlay) {
+    resultOverlay.classList.add('hidden');
+  }
+  if (generatedImageEl) {
+    generatedImageEl.src = '';
+    generatedImageEl.classList.add('hidden');
+  }
+  if (loadingStateEl) {
+    loadingStateEl.classList.remove('hidden');
+  }
+});
 
 const updateFromTitle = (title, productImageUrl = null) => {
   currentTitle = title || null;
@@ -642,7 +825,10 @@ const headshotPreview = document.getElementById('headshot-preview');
 const profileForm = document.getElementById('profile-form');
 const userGender = document.getElementById('user-gender');
 const userBodyType = document.getElementById('user-body-type');
-const userDescription = document.getElementById('user-description');
+const userHeight = document.getElementById('user-height');
+const userEthnicity = document.getElementById('user-ethnicity');
+const userAge = document.getElementById('user-age');
+const userFit = document.getElementById('user-fit');
 const apiKeyInput = document.getElementById('api-key');
 
 // Show overlay when profile icon is clicked
@@ -666,6 +852,8 @@ headshotInput?.addEventListener('change', (e) => {
     const reader = new FileReader();
     reader.onload = (event) => {
       const base64String = event.target.result;
+      // Store Base64 string in global variable for Save Profile button
+      userHeadshot = base64String;
       if (headshotPreview) {
         headshotPreview.src = base64String;
         headshotPreview.classList.remove('hidden');
@@ -679,18 +867,28 @@ headshotInput?.addEventListener('change', (e) => {
 profileForm?.addEventListener('submit', (e) => {
   e.preventDefault();
   
-  const profileData = {
-    headshot: headshotPreview?.src && !headshotPreview.classList.contains('hidden') 
-      ? headshotPreview.src 
-      : null,
-    gender: userGender?.value || '',
-    bodyType: userBodyType?.value || '',
-    description: userDescription?.value || '',
-    apiKey: apiKeyInput?.value || ''
+  // Get API key from input
+  const apiKey = apiKeyInput?.value || '';
+  
+  // Handle headshot: check tempHeadshotBase64 (userHeadshot global) vs existing storage
+  const headshotBase64 = userHeadshot || (headshotPreview?.src && !headshotPreview.classList.contains('hidden') 
+    ? headshotPreview.src 
+    : null);
+  
+  // Save all profile data at root level of chrome.storage.local
+  const storageData = {
+    apiKey: apiKey,
+    userHeadshot: headshotBase64,
+    userHeight: userHeight?.value || '',
+    userEthnicity: userEthnicity?.value || '',
+    userAge: userAge?.value || '',
+    userFit: userFit?.value || '',
+    userGender: userGender?.value || '',
+    userBodyType: userBodyType?.value || ''
   };
 
   chrome.storage?.local?.set(
-    { snseUserProfile: profileData },
+    storageData,
     () => {
       if (chrome.runtime.lastError) {
         console.warn('SNSE: Failed to save profile', chrome.runtime.lastError);
@@ -720,9 +918,13 @@ const loadProfile = () => {
     const profile = result?.snseUserProfile;
     if (profile) {
       // Pre-fill form fields
-      if (profile.headshot && headshotPreview) {
-        headshotPreview.src = profile.headshot;
-        headshotPreview.classList.remove('hidden');
+      if (profile.headshot) {
+        // Store in global variable and update preview
+        userHeadshot = profile.headshot;
+        if (headshotPreview) {
+          headshotPreview.src = profile.headshot;
+          headshotPreview.classList.remove('hidden');
+        }
       }
       if (profile.gender && userGender) {
         userGender.value = profile.gender;
@@ -730,8 +932,17 @@ const loadProfile = () => {
       if (profile.bodyType && userBodyType) {
         userBodyType.value = profile.bodyType;
       }
-      if (profile.description && userDescription) {
-        userDescription.value = profile.description;
+      if (profile.height && userHeight) {
+        userHeight.value = profile.height;
+      }
+      if (profile.ethnicity && userEthnicity) {
+        userEthnicity.value = profile.ethnicity;
+      }
+      if (profile.age && userAge) {
+        userAge.value = profile.age;
+      }
+      if (profile.fit && userFit) {
+        userFit.value = profile.fit;
       }
       if (profile.apiKey && apiKeyInput) {
         apiKeyInput.value = profile.apiKey;

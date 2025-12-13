@@ -90,6 +90,77 @@ button:disabled {
   padding-bottom: 80px;
 }
 
+/* Result Overlay */
+.result-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.result-overlay.hidden {
+  display: none;
+}
+
+.result-overlay-content {
+  position: relative;
+  max-width: 90%;
+  max-height: 90%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.generated-image {
+  max-width: 90vw;
+  max-height: 80vh;
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+}
+
+.generated-image.hidden {
+  display: none;
+}
+
+.loading-state {
+  color: #ffffff;
+  font-size: 1.1rem;
+  margin-bottom: 16px;
+  animation: pulse 1.2s ease-in-out infinite;
+  text-align: center;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.result-close-btn {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: #ffffff;
+  color: #333333;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
 /* Exit Outfit Creation Button */
 .exit-outfit-btn {
   position: absolute;
@@ -416,13 +487,76 @@ button:disabled {
   background-color: #333;
 }
 
-/* Additional styles for existing elements */
-h1 {
-  color: #333;
-  margin: 0;
-  padding: 16px;
+/* Result Overlay */
+.result-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
+.result-overlay-content {
+  max-width: 90%;
+  max-height: 90%;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.generated-image {
+  max-width: 90%;
+  max-height: 80vh;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.generated-image.hidden {
+  display: none;
+}
+
+.loading-state {
+  color: #ffffff;
+  font-size: 1rem;
+  font-weight: 500;
+  animation: loading-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes loading-pulse {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.result-close-btn {
+  margin-top: 8px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: none;
+  background-color: #ffffff;
+  color: #000000;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.result-close-btn:hover {
+  background-color: #f0f0f0;
+}
+
+/* Additional styles for existing elements */
 .tabs {
   display: flex;
   margin-top: 0;

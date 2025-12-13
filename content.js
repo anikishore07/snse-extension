@@ -111,14 +111,14 @@
       return;
     }
     const data = {
-      snseLastProductTitle: title
+        snseLastProductTitle: title
     };
     if (imageUrl) {
       data.snseLastProductImageUrl = imageUrl;
     }
     chrome.storage.local.set(data, () => {
-      if (chrome.runtime.lastError) {
-        console.warn('SNSE: Failed to persist title', chrome.runtime.lastError);
+        if (chrome.runtime.lastError) {
+          console.warn('SNSE: Failed to persist title', chrome.runtime.lastError);
       }
     });
   };
@@ -210,7 +210,7 @@
     const bodyReadyObserver = new MutationObserver(() => {
       if (document.body) {
         startObserver();
-        pollForTitle();
+  pollForTitle();
         bodyReadyObserver.disconnect();
       }
     });
