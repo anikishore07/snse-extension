@@ -61,6 +61,10 @@ const resultOverlay = document.getElementById('result-overlay');
 const loadingStateEl = document.getElementById('loading-state');
 const generatedImageEl = document.getElementById('generated-image');
 const resultCloseBtn = document.getElementById('result-close-btn');
+const enlargeOverlay = document.getElementById('enlarge-overlay');
+const enlargeCloseBtn = document.getElementById('enlarge-close-btn');
+const enlargedImageEl = document.getElementById('enlarged-image');
+const productImageEl = document.getElementById('product-image');
 const closetMatchesSection = inspirationView ? document.createElement('div') : null;
 
 if (closetMatchesSection) {
@@ -813,6 +817,34 @@ resultCloseBtn?.addEventListener('click', () => {
   }
   if (loadingStateEl) {
     loadingStateEl.classList.remove('hidden');
+  }
+});
+
+// Inspiration image overlay: open on product-image click, close via button
+const openInspirationOverlay = () => {
+  if (!enlargeOverlay || !enlargedImageEl || !productImageEl) {
+    console.warn('SNSE: Inspiration overlay elements missing');
+    return;
+  }
+  if (!productImageEl.src) {
+    return; // Nothing to show
+  }
+  enlargedImageEl.src = productImageEl.src;
+  enlargedImageEl.alt = productImageEl.alt || 'Enlarged image';
+  enlargeOverlay.classList.remove('hidden');
+};
+
+const closeInspirationOverlay = () => {
+  if (!enlargeOverlay) return;
+  enlargeOverlay.classList.add('hidden');
+};
+
+productImageEl?.addEventListener('click', openInspirationOverlay);
+enlargeCloseBtn?.addEventListener('click', closeInspirationOverlay);
+enlargeOverlay?.addEventListener('click', (event) => {
+  // Close when clicking the blurred backdrop, ignore clicks on the image itself
+  if (event.target === enlargeOverlay) {
+    closeInspirationOverlay();
   }
 });
 
